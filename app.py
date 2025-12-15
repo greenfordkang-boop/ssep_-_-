@@ -29,14 +29,15 @@ def login_page():
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown("""
-        <div class="login-container">
-            <h1 style='color: #0c4a6e; font-size: 2rem; margin-bottom: 0.5rem;'>신성EP</h1>
-            <h3 style='color: #64748b; font-weight: 400; font-size: 1.1rem; margin-bottom: 2rem;'>
-                개발 샘플 통합 관리 시스템
-            </h3>
-        </div>
-        """, unsafe_allow_html=True)
+        with st.container():
+            st.image("logo.png", width=300)
+            st.markdown("""
+            <div class="login-container">
+                <h3 style='font-size: 1.8rem; margin-bottom: 2rem;'>
+                    개발 샘플 통합 관리 시스템
+                </h3>
+            </div>
+            """, unsafe_allow_html=True)
         
         with st.form("login_form"):
             username = st.text_input("아이디 (ID)", placeholder="admin or client")

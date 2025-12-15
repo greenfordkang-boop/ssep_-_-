@@ -11,8 +11,7 @@ body,
 
 /* Background */
 .stApp {
-    background-color: #f1f5f9;
-    /* Lighter blue-grey */
+    background-color: white;
 }
 
 /* 
@@ -21,20 +20,20 @@ body,
    -----------------------------
 */
 .login-container {
-    background: rgba(255, 255, 255, 0.95);
-    padding: 3.5rem;
-    border-radius: 1.5rem;
-    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
-    max-width: 420px;
-    margin: 80px auto;
+    background: transparent;
+    padding: 1rem;
+    max-width: 500px;
+    margin: 20px auto 40px auto;
     text-align: center;
-    border: 1px solid #e2e8f0;
-    backdrop-filter: blur(10px);
-    transition: transform 0.3s ease;
+    /* Removed border and shadow for a cleaner look */
 }
 
-.login-container:hover {
-    transform: translateY(-5px);
+.login-container h3 {
+    background: linear-gradient(to right, #1e3a8a, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800 !important;
+    letter-spacing: -0.5px;
 }
 
 /* 
