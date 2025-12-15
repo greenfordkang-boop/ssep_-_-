@@ -1,0 +1,155 @@
+/* Global Styles */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+html,
+body,
+[class*="css"] {
+    font-family: 'Pretendard', 'Inter', sans-serif;
+    color: #334155;
+}
+
+/* Background */
+.stApp {
+    background-color: #f1f5f9;
+    /* Lighter blue-grey */
+}
+
+/* 
+   -----------------------------
+   Login Page Styling 
+   -----------------------------
+*/
+.login-container {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 3.5rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+    max-width: 420px;
+    margin: 80px auto;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    backdrop-filter: blur(10px);
+    transition: transform 0.3s ease;
+}
+
+.login-container:hover {
+    transform: translateY(-5px);
+}
+
+/* 
+   -----------------------------
+   Dashboard / UI Components 
+   -----------------------------
+*/
+
+/* Buttons */
+div.stButton>button {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0.5rem 1.0rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+}
+
+div.stButton>button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
+}
+
+div.stButton>button:active {
+    transform: translateY(0);
+}
+
+/* Form Submit Button specific */
+div[data-testid="stForm"] div.stButton>button {
+    width: 100%;
+    margin-top: 1rem;
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+}
+
+/* Dataframe Container */
+[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    background-color: white;
+    padding: 2px;
+}
+
+/* Inputs */
+.stTextInput>div>div>input,
+.stDateInput>div>div>input,
+.stTextArea>label>div>textarea {
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    padding: 0.6rem;
+    background-color: #f8fafc;
+    transition: all 0.2s;
+}
+
+.stTextInput>div>div>input:focus,
+.stTextArea>label>div>textarea:focus {
+    border-color: #2563eb;
+    background-color: white;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 20px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: 50px;
+    white-space: pre-wrap;
+    background-color: transparent;
+    border-radius: 5px 5px 0 0;
+    gap: 1px;
+    padding: 0px 20px;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: transparent;
+    color: #2563eb;
+    border-bottom: 2px solid #2563eb;
+}
+
+/* Metrics / KPI Cards (Future proofing) */
+div[data-testid="metric-container"] {
+    background-color: white;
+    padding: 1rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f1f5f9;
+}
+
+/* Headings */
+h1 {
+    color: #0f172a;
+    letter-spacing: -0.02em;
+}
+
+h2 {
+    color: #334155;
+    font-size: 1.5rem;
+}
+
+h3 {
+    color: #475569;
+}
+
+hr {
+    margin: 2rem 0;
+    border-color: #e2e8f0;
+}
