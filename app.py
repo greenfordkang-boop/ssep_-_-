@@ -34,7 +34,7 @@ def login_page():
             st.markdown("""
             <div class="login-container">
                 <h3 style='font-size: 1.8rem; margin-bottom: 2rem;'>
-                    개발 샘플 통합 관리 시스템
+                    개발샘플 관리시스템
                 </h3>
             </div>
             """, unsafe_allow_html=True)
@@ -188,6 +188,46 @@ def dashboard_page(user):
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key='download-xlsx'
                 )
+
+        # --- Mini Dashboard ---
+        if not df.empty:
+            st.markdown("### 📈 전체 현황 요약")
+            
+            # Metrics Row
+            m1, m2, m3, m4 = st.columns(4)
+            with m1:
+                st.metric("총 요청 건수", f"{len(df)}건")
+            with m2:
+                pending_count = len(df[df['진행상태'].astype(str).str.contains('대기|접수', na=False)])
+                st.metric("진행/대기 중", f"{pending_count}건")
+            with m3:
+                completed_count = len(df[df['진행상태'].astype(str).str.contains('완료', na=False)])
+                st.metric("완료 건수", f"{completed_count}건")
+            with m4:
+                company_count = df['업체명'].nunique()
+                st.metric("참여 업체", f"{company_count}개사")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Charts Row
+            c1, c2, c3 = st.columns(3)
+            
+            with c1:
+                st.caption("진행상태별 현황")
+                status_counts = df['진행상태'].value_counts()
+                st.bar_chart(status_counts, color="#3b82f6")
+                
+            with c2:
+                st.caption("업체별 요청 건수")
+                company_counts = df['업체명'].value_counts().head(5) # Top 5
+                st.bar_chart(company_counts, color="#ef4444")
+                
+            with c3:
+                st.caption("차종/프로젝트별 분포")
+                project_counts = df['차종/프로젝트'].value_counts().head(5) # Top 5
+                st.bar_chart(project_counts, color="#10b981")
+                
+            st.divider()
 
         # Editable Dataframe for easy management
         st.subheader("통합 관리 대장")
