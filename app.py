@@ -395,54 +395,45 @@ def dashboard_page(user):
             if "선택" not in display_df.columns:
                 display_df.insert(0, "선택", False)
             
+            # 날짜 컬럼 목록
+            date_columns = ["접수일", "납기일", "도면접수일", "완료예정일", "자재입고일", "샘플완료일", "출하일"]
+            
+            # 날짜 컬럼 데이터 타입 변환 (빈 문자열을 NaT로 변환)
+            for col in date_columns:
+                if col in display_df.columns:
+                    # 빈 문자열을 NaT로 변환
+                    display_df[col] = display_df[col].replace('', pd.NaT)
+                    # 날짜 타입으로 변환 시도
+                    try:
+                        display_df[col] = pd.to_datetime(display_df[col], errors='coerce')
+                    except:
+                        pass
+            
+            # column_config 동적 생성 (존재하는 컬럼만)
+            column_config = {
+                "선택": st.column_config.CheckboxColumn(
+                    "삭제 선택",
+                    help="삭제할 항목을 선택하세요",
+                    default=False,
+                )
+            }
+            
+            # 날짜 컬럼 설정 추가 (존재하는 컬럼만)
+            for col in date_columns:
+                if col in display_df.columns:
+                    column_config[col] = st.column_config.DateColumn(
+                        col,
+                        help=f"{col}을 선택하세요",
+                        format="YYYY-MM-DD",
+                    )
+            
             edited_df = st.data_editor(
                 display_df,
                 use_container_width=True,
                 height=600,
                 num_rows="dynamic",
                 key="admin_editor",
-                column_config={
-                    "선택": st.column_config.CheckboxColumn(
-                        "삭제 선택",
-                        help="삭제할 항목을 선택하세요",
-                        default=False,
-                    ),
-                    "접수일": st.column_config.DateColumn(
-                        "접수일",
-                        help="접수일을 선택하세요",
-                        format="YYYY-MM-DD",
-                    ),
-                    "납기일": st.column_config.DateColumn(
-                        "납기일",
-                        help="납기일을 선택하세요",
-                        format="YYYY-MM-DD",
-                    ),
-                    "도면접수일": st.column_config.DateColumn(
-                        "도면접수일",
-                        help="도면접수일을 선택하세요",
-                        format="YYYY-MM-DD",
-                    ),
-                    "완료예정일": st.column_config.DateColumn(
-                        "완료예정일",
-                        help="완료예정일을 선택하세요",
-                        format="YYYY-MM-DD",
-                    ),
-                    "자재입고일": st.column_config.DateColumn(
-                        "자재입고일",
-                        help="자재입고일을 선택하세요",
-                        format="YYYY-MM-DD",
-                    ),
-                    "샘플완료일": st.column_config.DateColumn(
-                        "샘플완료일",
-                        help="샘플완료일을 선택하세요",
-                        format="YYYY-MM-DD",
-                    ),
-                    "출하일": st.column_config.DateColumn(
-                        "출하일",
-                        help="출하일을 선택하세요",
-                        format="YYYY-MM-DD",
-                    ),
-                }
+                column_config=column_config
             )
             
             col_act1, col_act2 = st.columns([1, 4])
