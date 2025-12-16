@@ -403,27 +403,45 @@ def dashboard_page(user):
             if "선택" not in display_df.columns:
                 display_df.insert(0, "선택", False)
             
-            # 날짜 컬럼 목록
+            # 날짜 컬럼 목록 (날짜만 사용, 시간은 사용하지 않음)
             date_columns = ["접수일", "납기일", "도면접수일", "완료예정일", "자재입고일", "샘플완료일", "출하일"]
 
-            # 날짜 컬럼을 datetime 타입으로 변환 (Streamlit이 자동으로 Date picker를 표시하도록 유도)
+            # 날짜 컬럼을 '날짜만' 가지는 형식으로 정리 (datetime.date)
             for col in date_columns:
                 if col in display_df.columns:
                     try:
-                        display_df[col] = display_df[col].replace(['', 'nan', 'None', None], pd.NaT)
-                        display_df[col] = pd.to_datetime(display_df[col], errors='coerce')
+                        # 빈 값 정리
+                        display_df[col] = display_df[col].replace(['', 'nan', 'None', None, 'NaT'], pd.NaT)
+                        # datetime으로 변환 후 .date()만 사용
+                        display_df[col] = pd.to_datetime(display_df[col], errors='coerce').dt.date
                     except Exception:
-                        # 변환이 안 되더라도 편집은 가능하도록 그냥 넘어감
+                        # 변환 실패 시 그대로 두되, 편집은 가능하도록 함
                         pass
 
-            # column_config를 사용하지 않고 기본 타입 추론에 맡김
-            # 이렇게 하면 타입 호환성 오류 없이 날짜 컬럼은 가능한 경우 달력으로, 텍스트 컬럼은 입력란으로 동작
+            # 텍스트 입력이 확실히 되도록 텍스트 컬럼만 column_config로 지정
+            text_columns = ["납품장소", "요청사항", "자재요청", "비고"]
+            column_config = {
+                "선택": st.column_config.CheckboxColumn(
+                    "삭제 선택",
+                    help="삭제할 항목을 선택하세요",
+                    default=False,
+                )
+            }
+            for col in text_columns:
+                if col in display_df.columns:
+                    column_config[col] = st.column_config.TextColumn(
+                        col,
+                        help=f"{col}을 입력하세요",
+                        width="medium",
+                    )
+
             edited_df = st.data_editor(
                 display_df,
                 use_container_width=True,
                 height=600,
                 num_rows="dynamic",
-                key="admin_editor"
+                key="admin_editor",
+                column_config=column_config
             )
             
             col_act1, col_act2 = st.columns([1, 4])
