@@ -152,3 +152,33 @@ hr {
     margin: 2rem 0;
     border-color: #e2e8f0;
 }
+
+/* Styled Dataframe */
+.dataframe {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+.dataframe th {
+    background-color: #1e40af;
+    color: white;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    border: 1px solid #1e3a8a;
+}
+
+.dataframe td {
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    text-align: left;
+}
+
+.dataframe tr:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+.dataframe tr:hover {
+    background-color: #f1f5f9;
+}

@@ -4,6 +4,7 @@ import auth
 import data_manager
 import time
 import io
+from datetime import datetime
 
 # Page Config
 st.set_page_config(
@@ -24,6 +25,78 @@ try:
 except:
     pass
 
+def get_status_color(status):
+    """진행상태에 따른 색상 반환"""
+    status_str = str(status).lower()
+    if '대기' in status_str or '접수대기' in status_str:
+        return '#fbbf24'  # 노란색
+    elif '접수' in status_str:
+        return '#3b82f6'  # 파란색
+    elif '자재준비' in status_str:
+        return '#8b5cf6'  # 보라색
+    elif '생산중' in status_str:
+        return '#10b981'  # 초록색
+    elif '생산완료' in status_str:
+        return '#06b6d4'  # 청록색
+    elif '납품중' in status_str:
+        return '#f59e0b'  # 주황색
+    elif '완료' in status_str or '납품완료' in status_str:
+        return '#22c55e'  # 밝은 초록색
+    else:
+        return '#94a3b8'  # 회색 (기본)
+
+def is_overdue(row):
+    """납기가 지났는지 확인"""
+    if '납기요청일' not in row.index:
+        return False
+    try:
+        due_date_str = str(row['납기요청일'])
+        if not due_date_str or due_date_str == 'nan' or due_date_str == 'NaT':
+            return False
+        
+        # 날짜 파싱
+        if isinstance(row['납기요청일'], pd.Timestamp):
+            due_date = row['납기요청일'].date()
+        else:
+            due_date = pd.to_datetime(due_date_str).date()
+        
+        today = datetime.now().date()
+        
+        # 납기가 지났고 완료되지 않은 경우
+        if due_date < today:
+            status = str(row.get('진행상태', '')).lower()
+            if '완료' not in status and '납품완료' not in status:
+                return True
+    except:
+        pass
+    return False
+
+def style_dataframe(df):
+    """데이터프레임에 색상 스타일 적용하여 HTML로 반환"""
+    if df.empty:
+        return df
+    
+    # 진행상태 컬럼에 색상 배경 적용
+    def style_status(val):
+        color = get_status_color(val)
+        return f'background-color: {color}; color: white; font-weight: bold; padding: 5px; border-radius: 4px; text-align: center;'
+    
+    # 납기 지난 항목 체크
+    overdue_mask = df.apply(is_overdue, axis=1)
+    
+    # 스타일 적용
+    styled_df = df.style.applymap(style_status, subset=['진행상태'])
+    
+    # 납기 지난 행에 빨간색 텍스트 적용
+    def highlight_overdue(row):
+        if overdue_mask[row.name]:
+            return ['color: #dc2626; font-weight: bold;'] * len(row)
+        return [''] * len(row)
+    
+    styled_df = styled_df.apply(highlight_overdue, axis=1)
+    
+    return styled_df
+
 def login_page():
     st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
     
@@ -39,22 +112,50 @@ def login_page():
             </div>
             """, unsafe_allow_html=True)
         
-        with st.form("login_form"):
-            username = st.text_input("아이디 (ID)", placeholder="admin or client")
-            password = st.text_input("비밀번호 (Password)", type="password", placeholder="******")
-            
-            submit = st.form_submit_button("로그인 (Login)", use_container_width=True)
-            
-            if submit:
-                user = auth.login(username, password)
-                if user:
-                    st.session_state["logged_in"] = True
-                    st.session_state["user_info"] = user
-                    st.success(f"환영합니다, {user['name']}님!")
-                    time.sleep(1)
-                    st.rerun()
-                else:
-                    st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
+        # 로그인/회원가입 탭
+        tab1, tab2 = st.tabs(["로그인", "회원가입"])
+        
+        with tab1:
+            with st.form("login_form"):
+                username = st.text_input("아이디 (ID)", placeholder="아이디를 입력하세요")
+                password = st.text_input("비밀번호 (Password)", type="password", placeholder="******")
+                
+                submit = st.form_submit_button("로그인 (Login)", use_container_width=True)
+                
+                if submit:
+                    user = auth.login(username, password)
+                    if user:
+                        st.session_state["logged_in"] = True
+                        st.session_state["user_info"] = user
+                        st.session_state["current_username"] = username
+                        st.success(f"환영합니다, {user['name']}님!")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
+        
+        with tab2:
+            st.info("💡 고객사 계정으로 회원가입하실 수 있습니다.")
+            with st.form("register_form"):
+                username = st.text_input("아이디 (ID)", placeholder="사용할 아이디를 입력하세요")
+                password = st.text_input("비밀번호 (Password)", type="password", placeholder="비밀번호를 입력하세요")
+                password_confirm = st.text_input("비밀번호 확인", type="password", placeholder="비밀번호를 다시 입력하세요")
+                company = st.text_input("업체명", placeholder="회사명을 입력하세요")
+                name = st.text_input("이름", placeholder="이름을 입력하세요")
+                
+                submit = st.form_submit_button("회원가입", use_container_width=True)
+                
+                if submit:
+                    if password != password_confirm:
+                        st.error("비밀번호가 일치하지 않습니다.")
+                    else:
+                        success, message = auth.register_user(username, password, company, name)
+                        if success:
+                            st.success(message)
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(message)
 
 def dashboard_page(user):
     # Top Bar
@@ -63,8 +164,57 @@ def dashboard_page(user):
         st.title(f"📊 개발 샘플 현황 대장")
     with c2:
         st.write(f"접속자: **{user['name']}** ({user['company']})")
-        if st.button("로그아웃"):
-            auth.logout()
+        col_logout, col_pw = st.columns(2)
+        with col_logout:
+            if st.button("로그아웃"):
+                auth.logout()
+        with col_pw:
+            if st.button("비밀번호 변경"):
+                st.session_state["show_password_change"] = True
+    
+    # 비밀번호 변경 모달
+    if st.session_state.get("show_password_change", False):
+        with st.expander("비밀번호 변경", expanded=True):
+            with st.form("change_password_form"):
+                old_password = st.text_input("현재 비밀번호", type="password")
+                new_password = st.text_input("새 비밀번호", type="password")
+                new_password_confirm = st.text_input("새 비밀번호 확인", type="password")
+                
+                col_submit, col_cancel = st.columns(2)
+                with col_submit:
+                    submit = st.form_submit_button("변경", use_container_width=True)
+                with col_cancel:
+                    if st.form_submit_button("취소", use_container_width=True):
+                        st.session_state["show_password_change"] = False
+                        st.rerun()
+                
+                if submit:
+                    if new_password != new_password_confirm:
+                        st.error("새 비밀번호가 일치하지 않습니다.")
+                    else:
+                        # 현재 로그인한 사용자의 아이디 찾기
+                        current_username = None
+                        users = auth.load_users()
+                        for username, user_info in users.items():
+                            if user_info.get('name') == user['name'] and user_info.get('company') == user['company']:
+                                current_username = username
+                                break
+                        
+                        if current_username:
+                            success, message = auth.change_password(
+                                current_username,
+                                old_password,
+                                new_password
+                            )
+                            if success:
+                                st.success(message)
+                                st.session_state["show_password_change"] = False
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error(message)
+                        else:
+                            st.error("사용자 정보를 찾을 수 없습니다.")
 
     st.markdown("---")
 
@@ -78,11 +228,12 @@ def dashboard_page(user):
         with tab1:
             st.info("💡 요청하신 샘플의 진행 현황을 실시간으로 확인하실 수 있습니다.")
             if not df.empty:
-                st.dataframe(
-                    df, 
-                    use_container_width=True,
-                    hide_index=True,
-                    height=500
+                styled_df = style_dataframe(df)
+                # 스타일링된 데이터프레임을 HTML로 변환하여 표시
+                html = styled_df.to_html(escape=False)
+                st.markdown(
+                    f'<div style="overflow-x: auto; max-height: 600px; overflow-y: auto;">{html}</div>',
+                    unsafe_allow_html=True
                 )
             else:
                 st.warning("아직 요청 내역이 없습니다.")
@@ -232,6 +383,16 @@ def dashboard_page(user):
         # Editable Dataframe for easy management
         st.subheader("통합 관리 대장")
         if not df.empty:
+            # 스타일링된 미리보기 추가
+            with st.expander("📊 스타일링된 뷰 (읽기 전용)", expanded=False):
+                styled_df = style_dataframe(df)
+                html = styled_df.to_html(escape=False)
+                st.markdown(
+                    f'<div style="overflow-x: auto; max-height: 600px; overflow-y: auto;">{html}</div>',
+                    unsafe_allow_html=True
+                )
+            
+            st.markdown("<br>", unsafe_allow_html=True)
             # Add a selection column for deletion
             # We create a copy to avoid SettingWithCopy warning on the original cached df if any
             display_df = df.copy()
