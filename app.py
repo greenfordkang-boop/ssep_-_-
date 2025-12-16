@@ -418,30 +418,12 @@ def dashboard_page(user):
                         # 변환 실패 시 그대로 두되, 편집은 가능하도록 함
                         pass
 
-            # 텍스트 입력이 확실히 되도록 텍스트 컬럼만 column_config로 지정
-            text_columns = ["납품장소", "요청사항", "자재요청", "비고"]
-            column_config = {
-                "선택": st.column_config.CheckboxColumn(
-                    "삭제 선택",
-                    help="삭제할 항목을 선택하세요",
-                    default=False,
-                )
-            }
-            for col in text_columns:
-                if col in display_df.columns:
-                    column_config[col] = st.column_config.TextColumn(
-                        col,
-                        help=f"{col}을 입력하세요",
-                        width="medium",
-                    )
-
             edited_df = st.data_editor(
                 display_df,
                 use_container_width=True,
                 height=600,
                 num_rows="dynamic",
-                key="admin_editor",
-                column_config=column_config
+                key="admin_editor"
             )
             
             col_act1, col_act2 = st.columns([1, 4])
