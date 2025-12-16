@@ -28,35 +28,47 @@ except:
 def get_status_color(status):
     """진행상태에 따른 색상 반환"""
     status_str = str(status).lower()
-    if '대기' in status_str or '접수대기' in status_str:
+    # 접수 / 자재준비 / 생산중 / 출하준비 / 출하완료
+    if '접수' in status_str:
         return '#fbbf24'  # 노란색
-    elif '도면접수' in status_str:
+    elif '자재준비' in status_str:
         return '#3b82f6'  # 파란색
-    elif '자재요청' in status_str:
-        return '#8b5cf6'  # 보라색
-    elif '자재입고' in status_str:
+    elif '생산중' in status_str:
         return '#10b981'  # 초록색
-    elif '샘플완료' in status_str:
-        return '#06b6d4'  # 청록색
+    elif '출하준비' in status_str:
+        return '#f59e0b'  # 주황색
     elif '출하완료' in status_str or '완료' in status_str:
-        return '#22c55e'  # 밝은 초록색
+        return '#22c55e'  # 밝은 초록색 (완료)
     else:
         return '#94a3b8'  # 회색 (기본)
 
 def get_progress_status(row):
-    """날짜 필드를 기반으로 진행상태 계산"""
+    """
+    날짜/진행 정보를 기반으로 진행상태 기본값 계산
+    - 출하일 있으면: 출하완료
+    - 샘플완료일 있으면: 출하준비
+    - 자재입고일 있으면: 생산중
+    - 자재요청 또는 도면접수일 있으면: 자재준비
+    - 그 외: 접수
+    """
+    # 출하완료
     if pd.notna(row.get('출하일')) and str(row.get('출하일')) not in ['', 'nan', 'NaT']:
         return '출하완료'
-    elif pd.notna(row.get('샘플완료일')) and str(row.get('샘플완료일')) not in ['', 'nan', 'NaT']:
-        return '샘플완료'
-    elif pd.notna(row.get('자재입고일')) and str(row.get('자재입고일')) not in ['', 'nan', 'NaT']:
-        return '자재입고'
-    elif pd.notna(row.get('자재요청')) and str(row.get('자재요청')) not in ['', 'nan', 'NaT']:
-        return '자재요청'
-    elif pd.notna(row.get('도면접수일')) and str(row.get('도면접수일')) not in ['', 'nan', 'NaT']:
-        return '도면접수'
-    else:
-        return '접수대기'
+    # 출하준비 (샘플완료까지 끝난 상태)
+    if pd.notna(row.get('샘플완료일')) and str(row.get('샘플완료일')) not in ['', 'nan', 'NaT']:
+        return '출하준비'
+    # 생산중 (자재입고 이후)
+    if pd.notna(row.get('자재입고일')) and str(row.get('자재입고일')) not in ['', 'nan', 'NaT']:
+        return '생산중'
+    # 자재준비 (자재요청 또는 도면접수)
+    if (
+        pd.notna(row.get('자재요청')) and str(row.get('자재요청')) not in ['', 'nan', 'NaT']
+    ) or (
+        pd.notna(row.get('도면접수일')) and str(row.get('도면접수일')) not in ['', 'nan', 'NaT']
+    ):
+        return '자재준비'
+    # 기본값: 접수
+    return '접수'
 
 def is_overdue(row):
     """납기가 지났는지 확인"""
@@ -347,13 +359,16 @@ def dashboard_page(user):
             with m1:
                 st.metric("총 요청 건수", f"{len(df)}건")
             with m2:
-                # 진행상태 계산
+                # 진행상태 계산 (없으면 기본값 생성)
                 if '진행상태' not in df.columns:
                     df['진행상태'] = df.apply(get_progress_status, axis=1)
-                pending_count = len(df[df['진행상태'].astype(str).str.contains('대기|접수|자재', na=False)])
+                # 진행/대기: 접수, 자재준비, 생산중, 출하준비
+                pending_mask = df['진행상태'].astype(str).isin(['접수', '자재준비', '생산중', '출하준비'])
+                pending_count = pending_mask.sum()
                 st.metric("진행/대기 중", f"{pending_count}건")
             with m3:
-                completed_count = len(df[df['진행상태'].astype(str).str.contains('완료', na=False)])
+                # 완료: 출하완료
+                completed_count = len(df[df['진행상태'].astype(str).str.contains('출하완료', na=False)])
                 st.metric("완료 건수", f"{completed_count}건")
             with m4:
                 company_count = df['업체명'].nunique()
