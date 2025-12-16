@@ -403,7 +403,21 @@ def dashboard_page(user):
             if "선택" not in display_df.columns:
                 display_df.insert(0, "선택", False)
             
-            # column_config 최소화 - 선택 컬럼만 설정 (타입 호환성 문제 방지)
+            # 날짜 컬럼 목록
+            date_columns = ["접수일", "납기일", "도면접수일", "완료예정일", "자재입고일", "샘플완료일", "출하일"]
+            
+            # 날짜 컬럼을 datetime 타입으로 변환 (빈 값은 NaT로)
+            for col in date_columns:
+                if col in display_df.columns:
+                    try:
+                        # 빈 문자열, None 등을 NaT로 변환
+                        display_df[col] = display_df[col].replace(['', 'nan', 'None', None], pd.NaT)
+                        # 날짜 타입으로 변환
+                        display_df[col] = pd.to_datetime(display_df[col], errors='coerce')
+                    except:
+                        pass
+            
+            # column_config 설정
             column_config = {
                 "선택": st.column_config.CheckboxColumn(
                     "삭제 선택",
@@ -412,8 +426,24 @@ def dashboard_page(user):
                 )
             }
             
-            # 날짜 컬럼은 기본 편집 모드로 사용 (DateColumn 설정 제거로 타입 호환성 문제 방지)
-            # 비고와 자재요청 필드도 기본 편집 모드로 사용
+            # 날짜 컬럼 설정 (달력 선택 가능)
+            for col in date_columns:
+                if col in display_df.columns:
+                    column_config[col] = st.column_config.DateColumn(
+                        col,
+                        help=f"{col}을 달력에서 선택하세요",
+                        format="YYYY-MM-DD",
+                    )
+            
+            # 텍스트 입력 가능한 컬럼 설정
+            text_columns = ["납품장소", "요청사항", "자재요청", "비고"]
+            for col in text_columns:
+                if col in display_df.columns:
+                    column_config[col] = st.column_config.TextColumn(
+                        col,
+                        help=f"{col}을 입력하세요",
+                        width="medium",
+                    )
             
             edited_df = st.data_editor(
                 display_df,
