@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import shutil
 from datetime import datetime
 
 DATA_FILE = "sample_db.xlsx"
@@ -90,7 +91,9 @@ def load_data():
         existing_cols = [col for col in expected_cols if col in df.columns]
         df = df[existing_cols]
         
+        # 기존 데이터 보존: 업데이트 시에도 기존 행 데이터는 모두 유지
         if updated:
+            # 백업 후 저장 (기존 데이터 보존)
             save_data(df)
             
         # Ensure ID column is treated as string
@@ -109,6 +112,11 @@ def load_data():
 def save_data(df):
     """Save dataframe to Excel."""
     try:
+        # 기존 데이터 백업 (업데이트 시 데이터 보존을 위해)
+        if os.path.exists(DATA_FILE):
+            backup_file = f"{DATA_FILE}.backup"
+            shutil.copy2(DATA_FILE, backup_file)
+        
         df.to_excel(DATA_FILE, index=False)
         return True
     except Exception as e:
@@ -153,6 +161,11 @@ def merge_data(new_df):
     """Merge new data from uploaded Excel into the existing DB."""
     current_df = load_data()
     
+    # 기존 데이터 백업 (병합 시 데이터 보존을 위해)
+    if os.path.exists(DATA_FILE):
+        backup_file = f"{DATA_FILE}.backup"
+        shutil.copy2(DATA_FILE, backup_file)
+    
     # Ensure ID column exists in new data, if not generate them or handle appropriately
     # For this simple version, we will just Append new rows that don't look like duplicates
     # A simple check: if 'ID' exists in new_df, update those rows. If not, append.
@@ -167,10 +180,10 @@ def merge_data(new_df):
         for i in range(len(new_df)):
             new_ids.append(f"REQ-{date_str}-{(start_count + i):03d}")
         new_df['관리번호'] = new_ids
-        
+    
     # Concatenate and save
     # Note: This is a simple append. For a real system, we might want to check for duplicates based on ID.
-    # If ID exists, we update.
+    # If ID exists, we update. 기존 데이터는 보존하고 새 데이터만 추가/업데이트
     
     updated_df = current_df.copy()
     
@@ -180,14 +193,18 @@ def merge_data(new_df):
     for index, row in new_df.iterrows():
         rid = row['관리번호']
         if rid in updated_df['관리번호'].values:
-            # Update existing row
+            # Update existing row (기존 데이터 보존하면서 업데이트)
             # Find index of this ID
             idx = updated_df.index[updated_df['관리번호'] == rid].tolist()[0]
-            # Update columns
+            # Update columns (빈 값이 아닌 경우에만 업데이트하여 기존 데이터 보존)
             for col in new_df.columns:
-                updated_df.at[idx, col] = row[col]
+                if col in updated_df.columns:
+                    new_value = row[col]
+                    # 빈 값이 아니거나, 기존 값이 비어있는 경우에만 업데이트
+                    if pd.notna(new_value) and str(new_value).strip() != "":
+                        updated_df.at[idx, col] = new_value
         else:
-            # Append new row
+            # Append new row (기존 데이터는 그대로 유지)
             updated_df = pd.concat([updated_df, pd.DataFrame([row])], ignore_index=True)
             
     return save_data(updated_df)

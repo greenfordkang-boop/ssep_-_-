@@ -531,6 +531,74 @@ def dashboard_page(user):
                         st.success("데이터가 성공적으로 업데이트되었습니다.")
                     else:
                         st.error("저장 실패.")
+            
+            # 관리자 모드: 첨부파일 업로드 기능
+            st.markdown("---")
+            st.subheader("📎 첨부파일 업로드")
+            st.info("특정 요청건에 첨부파일을 추가할 수 있습니다.")
+            
+            # 관리번호 선택 및 파일 업로드
+            col_file1, col_file2 = st.columns([2, 3])
+            with col_file1:
+                if not df.empty:
+                    request_ids = df['관리번호'].tolist()
+                    selected_id = st.selectbox(
+                        "관리번호 선택",
+                        options=request_ids,
+                        help="첨부파일을 추가할 요청건을 선택하세요"
+                    )
+                else:
+                    selected_id = None
+                    st.info("요청건이 없습니다.")
+            
+            with col_file2:
+                admin_uploaded_file = st.file_uploader(
+                    "첨부파일 업로드",
+                    type=['pdf', 'jpg', 'jpeg', 'png', 'xlsx', 'xls', 'pptx', 'ppt', 'doc', 'docx', 'zip', 'dwg'],
+                    help="도면, 사양서, 이미지 등을 업로드할 수 있습니다.",
+                    key="admin_file_upload"
+                )
+            
+            if selected_id and admin_uploaded_file is not None:
+                if st.button("파일 업로드 및 저장", type="primary"):
+                    try:
+                        # 파일 저장 디렉토리 생성
+                        import os
+                        save_dir = "attachments"
+                        if not os.path.exists(save_dir):
+                            os.makedirs(save_dir)
+                        
+                        # 타임스탬프와 원본 파일명을 조합하여 저장
+                        timestamp = time.strftime("%Y%m%d_%H%M%S")
+                        safe_filename = "".join(c for c in admin_uploaded_file.name if c.isalnum() or c in "._- ")
+                        file_name = f"{timestamp}_{safe_filename}"
+                        file_path = os.path.join(save_dir, file_name)
+                        
+                        # 파일 저장
+                        with open(file_path, "wb") as f:
+                            f.write(admin_uploaded_file.getbuffer())
+                        
+                        # 데이터베이스 업데이트
+                        df_to_update = data_manager.load_data()
+                        if selected_id in df_to_update['관리번호'].values:
+                            idx = df_to_update.index[df_to_update['관리번호'] == selected_id].tolist()[0]
+                            # 기존 첨부파일이 있으면 추가 (쉼표로 구분)
+                            existing_file = str(df_to_update.at[idx, '첨부파일']) if '첨부파일' in df_to_update.columns else ""
+                            if existing_file and existing_file.strip() != "" and existing_file != "nan":
+                                df_to_update.at[idx, '첨부파일'] = f"{existing_file}, {file_name}"
+                            else:
+                                df_to_update.at[idx, '첨부파일'] = file_name
+                            
+                            if data_manager.save_data(df_to_update):
+                                st.success(f"파일이 성공적으로 업로드되었습니다: {admin_uploaded_file.name}")
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error("데이터베이스 업데이트 실패.")
+                        else:
+                            st.error("선택한 관리번호를 찾을 수 없습니다.")
+                    except Exception as e:
+                        st.error(f"파일 업로드 중 오류 발생: {e}")
 
         else:
             st.info("데이터가 없습니다.")
