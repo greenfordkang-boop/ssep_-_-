@@ -302,31 +302,17 @@ def dashboard_page(user):
                 
                 st.markdown("---")
                 
-                # 파일 업로드
+                # 파일 업로드 (폼 안에서 사용 가능하도록 key 추가)
                 uploaded_file = st.file_uploader(
                     "첨부파일 (도면, 사양서 등)", 
                     type=['pdf', 'jpg', 'jpeg', 'png', 'xlsx', 'xls', 'pptx', 'ppt', 'doc', 'docx', 'zip', 'dwg'],
-                    help="도면, 사양서, 이미지 등을 업로드할 수 있습니다."
+                    help="도면, 사양서, 이미지 등을 업로드할 수 있습니다.",
+                    key="new_request_file"
                 )
                 
-                file_name = ""
+                # 파일이 업로드되었을 때 미리보기 표시
                 if uploaded_file is not None:
-                    # 파일 저장 디렉토리 생성
-                    import os
-                    save_dir = "attachments"
-                    if not os.path.exists(save_dir):
-                        os.makedirs(save_dir)
-                    
-                    # 타임스탬프와 원본 파일명을 조합하여 저장
-                    timestamp = time.strftime("%Y%m%d_%H%M%S")
-                    file_name = f"{timestamp}_{uploaded_file.name}"
-                    file_path = os.path.join(save_dir, file_name)
-                    
-                    # 파일 저장
-                    with open(file_path, "wb") as f:
-                        f.write(uploaded_file.getbuffer())
-                    
-                    st.success(f"파일 업로드 완료: {uploaded_file.name}")
+                    st.info(f"📎 선택된 파일: **{uploaded_file.name}** ({uploaded_file.size:,} bytes)")
 
                 submitted = st.form_submit_button("요청 등록", type="primary")
                 
@@ -334,6 +320,31 @@ def dashboard_page(user):
                     if not project or not part_name:
                         st.error("차종과 품명은 필수 입력입니다.")
                     else:
+                        file_name = ""
+                        # 폼 제출 시점에 파일 저장
+                        if uploaded_file is not None:
+                            try:
+                                # 파일 저장 디렉토리 생성
+                                import os
+                                save_dir = "attachments"
+                                if not os.path.exists(save_dir):
+                                    os.makedirs(save_dir)
+                                
+                                # 타임스탬프와 원본 파일명을 조합하여 저장
+                                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                                # 파일명에 특수문자 제거
+                                safe_filename = "".join(c for c in uploaded_file.name if c.isalnum() or c in "._- ")
+                                file_name = f"{timestamp}_{safe_filename}"
+                                file_path = os.path.join(save_dir, file_name)
+                                
+                                # 파일 저장
+                                with open(file_path, "wb") as f:
+                                    f.write(uploaded_file.getbuffer())
+                                
+                                st.success(f"파일 저장 완료: {uploaded_file.name}")
+                            except Exception as e:
+                                st.warning(f"파일 저장 중 오류 발생: {e}. 요청은 등록되지만 파일은 저장되지 않았습니다.")
+                        
                         new_data = {
                             "담당자": req_name,
                             "부서": dept,
