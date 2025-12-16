@@ -244,15 +244,23 @@ def dashboard_page(user):
         tab1, tab2 = st.tabs(["📋 내 요청 목록", "➕ 새 샘플 요청"])
         
         with tab1:
-            st.info("💡 요청하신 샘플의 진행 현황을 실시간으로 확인하실 수 있습니다.")
+            st.info("💡 요청하신 샘플의 진행 현황을 실시간으로 확인하실 수 있습니다. 관리자가 입력한 자재요청 및 비고 사항도 확인하실 수 있습니다.")
             if not df.empty:
-                styled_df = style_dataframe(df)
+                # 고객사 화면에서도 모든 컬럼 표시 (자재요청, 비고 포함)
+                display_df = df.copy()
+                
+                # 자재요청과 비고 컬럼이 있는지 확인하고 표시
+                styled_df = style_dataframe(display_df)
                 # 스타일링된 데이터프레임을 HTML로 변환하여 표시
                 html = styled_df.to_html(escape=False)
                 st.markdown(
                     f'<div style="overflow-x: auto; max-height: 600px; overflow-y: auto;">{html}</div>',
                     unsafe_allow_html=True
                 )
+                
+                # 자재요청과 비고 필드 안내
+                if "자재요청" in df.columns or "비고" in df.columns:
+                    st.caption("📝 자재요청 및 비고는 관리자가 입력한 내용입니다.")
             else:
                 st.warning("아직 요청 내역이 없습니다.")
 
@@ -426,6 +434,21 @@ def dashboard_page(user):
                         help=f"{col}을 선택하세요",
                         format="YYYY-MM-DD",
                     )
+            
+            # 비고와 자재요청 필드 설정 (관리자 전용)
+            if "비고" in display_df.columns:
+                column_config["비고"] = st.column_config.TextColumn(
+                    "비고",
+                    help="관리자 전용 비고란입니다",
+                    width="medium",
+                )
+            
+            if "자재요청" in display_df.columns:
+                column_config["자재요청"] = st.column_config.TextColumn(
+                    "자재요청",
+                    help="관리자 전용 자재요청란입니다",
+                    width="medium",
+                )
             
             edited_df = st.data_editor(
                 display_df,

@@ -122,6 +122,22 @@ def add_request(data_dict):
     data_dict["관리번호"] = new_id
     data_dict["접수일"] = datetime.now().strftime("%Y-%m-%d")
     
+    # 관리자 전용 필드는 빈 값으로 초기화 (비고, 자재요청)
+    if "비고" not in data_dict:
+        data_dict["비고"] = ""
+    if "자재요청" not in data_dict:
+        data_dict["자재요청"] = ""
+    
+    # 모든 필수 컬럼이 있는지 확인하고 없으면 빈 값으로 추가
+    expected_cols = [
+        "관리번호", "접수일", "담당자", "부서", "업체명", "차종", "품명", "품번", 
+        "납품장소", "요청수량", "납기일", "요청사항", "도면접수일", "자재요청", 
+        "완료예정일", "자재입고일", "샘플완료일", "출하일", "비고"
+    ]
+    for col in expected_cols:
+        if col not in data_dict:
+            data_dict[col] = ""
+    
     new_row = pd.DataFrame([data_dict])
     df = pd.concat([df, new_row], ignore_index=True)
     
