@@ -402,21 +402,26 @@ def dashboard_page(user):
             display_df = df.copy()
             if "선택" not in display_df.columns:
                 display_df.insert(0, "선택", False)
-            
-            # 날짜 컬럼 목록 (날짜만 사용, 시간은 사용하지 않음)
-            date_columns = ["접수일", "납기일", "도면접수일", "완료예정일", "자재입고일", "샘플완료일", "출하일"]
 
-            # 날짜 컬럼을 '날짜만' 가지는 형식으로 정리 (datetime.date)
+            # ---- 컬럼 타입 정리 (에디터용 뷰에만 적용) ----
+            # 1) 날짜 컬럼: 날짜만 문자열(YYYY-MM-DD)로 표시 (시간 제거)
+            date_columns = ["접수일", "납기일", "도면접수일", "완료예정일", "자재입고일", "샘플완료일", "출하일"]
             for col in date_columns:
                 if col in display_df.columns:
                     try:
-                        # 빈 값 정리
-                        display_df[col] = display_df[col].replace(['', 'nan', 'None', None, 'NaT'], pd.NaT)
-                        # datetime으로 변환 후 .date()만 사용
-                        display_df[col] = pd.to_datetime(display_df[col], errors='coerce').dt.date
+                        col_dt = pd.to_datetime(display_df[col], errors="coerce")
+                        # 날짜만 남기고 문자열로 변환
+                        display_df[col] = col_dt.dt.strftime("%Y-%m-%d")
+                        display_df[col] = display_df[col].fillna("")
                     except Exception:
                         # 변환 실패 시 그대로 두되, 편집은 가능하도록 함
                         pass
+
+            # 2) 텍스트 컬럼: 문자 입력 가능하도록 전부 문자열 타입으로 캐스팅
+            text_columns = ["납품장소", "요청사항", "자재요청", "비고"]
+            for col in text_columns:
+                if col in display_df.columns:
+                    display_df[col] = display_df[col].astype("string").fillna("")
 
             edited_df = st.data_editor(
                 display_df,
