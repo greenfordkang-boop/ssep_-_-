@@ -419,17 +419,16 @@ def dashboard_page(user):
                 display_df.insert(0, "선택", False)
 
             # ---- 컬럼 타입 정리 (에디터용 뷰에만 적용) ----
-            # 1) 날짜 컬럼: 날짜만 문자열(YYYY-MM-DD)로 표시 (시간 제거)
+            # 1) 날짜 컬럼: datetime 타입으로 변환 (캘린더 선택 가능하도록)
             date_columns = ["접수일", "납기일", "도면접수일", "완료예정일", "자재입고일", "샘플완료일", "출하일"]
             for col in date_columns:
                 if col in display_df.columns:
                     try:
-                        col_dt = pd.to_datetime(display_df[col], errors="coerce")
-                        # 날짜만 남기고 문자열로 변환
-                        display_df[col] = col_dt.dt.strftime("%Y-%m-%d")
-                        display_df[col] = display_df[col].fillna("")
+                        # 빈 값 처리
+                        display_df[col] = display_df[col].replace(['', 'nan', 'None', None], pd.NaT)
+                        # datetime 타입으로 변환 (날짜만, 시간 없음)
+                        display_df[col] = pd.to_datetime(display_df[col], errors='coerce')
                     except Exception:
-                        # 변환 실패 시 그대로 두되, 편집은 가능하도록 함
                         pass
 
             # 2) 텍스트 컬럼: 문자 입력 가능하도록 전부 문자열 타입으로 캐스팅
@@ -438,12 +437,33 @@ def dashboard_page(user):
                 if col in display_df.columns:
                     display_df[col] = display_df[col].astype("string").fillna("")
 
+            # column_config 설정 (캘린더 선택 가능하도록)
+            column_config = {
+                "선택": st.column_config.CheckboxColumn(
+                    "삭제 선택",
+                    help="삭제할 항목을 선택하세요",
+                    default=False,
+                )
+            }
+            
+            # 날짜 컬럼에 DateColumn 설정 (캘린더로 선택 가능)
+            for col in date_columns:
+                if col in display_df.columns:
+                    # datetime 타입인 경우에만 DateColumn 설정
+                    if pd.api.types.is_datetime64_any_dtype(display_df[col].dtype):
+                        column_config[col] = st.column_config.DateColumn(
+                            col,
+                            help=f"{col}을 달력에서 선택하세요",
+                            format="YYYY-MM-DD",
+                        )
+
             edited_df = st.data_editor(
                 display_df,
                 use_container_width=True,
                 height=600,
                 num_rows="dynamic",
-                key="admin_editor"
+                key="admin_editor",
+                column_config=column_config
             )
             
             col_act1, col_act2 = st.columns([1, 4])

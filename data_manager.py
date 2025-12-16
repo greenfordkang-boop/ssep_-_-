@@ -96,6 +96,11 @@ def load_data():
         # Ensure ID column is treated as string
         if '관리번호' in df.columns:
             df['관리번호'] = df['관리번호'].astype(str)
+
+        # 비고 컬럼은 항상 문자열로 (한글/영문 등 자유 입력 가능)
+        if '비고' in df.columns:
+            df['비고'] = df['비고'].astype(str).fillna("")
+
         return df
     except Exception as e:
         print(f"Error loading DB: {e}")
