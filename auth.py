@@ -28,23 +28,32 @@ def load_users():
         try:
             with open(USERS_FILE, 'r', encoding='utf-8') as f:
                 users = json.load(f)
-                # 기본 관리자 계정 병합 (기본 계정이 우선)
+                # 기본 관리자 계정 병합 (기본 계정이 우선 - 항상 최신 비밀번호 유지)
+                # 파일에 저장된 기본 계정 정보가 있으면 덮어쓰기
+                for key in DEFAULT_USERS.keys():
+                    if key in users:
+                        # 파일에 저장된 기본 계정도 유지하되, DEFAULT_USERS로 덮어쓰기
+                        pass
                 users.update(DEFAULT_USERS)
                 return users
-        except:
+        except Exception as e:
+            print(f"Error loading users: {e}")
+            # 파일 읽기 실패 시 기본 계정 반환하고 파일 재생성
+            save_users(DEFAULT_USERS.copy())
             return DEFAULT_USERS.copy()
     else:
-        # 파일이 없으면 기본 사용자만 반환하고 파일 생성
-        save_users(DEFAULT_USERS.copy())
-        return DEFAULT_USERS.copy()
+        # 파일이 없으면 기본 사용자 포함해서 파일 생성
+        all_users = DEFAULT_USERS.copy()
+        save_users(all_users)
+        return all_users
 
 def save_users(users):
     """Save users to JSON file."""
     try:
-        # 기본 관리자 계정은 파일에 저장하지 않음 (항상 메모리에 유지)
-        users_to_save = {k: v for k, v in users.items() if k not in DEFAULT_USERS.keys()}
+        # 모든 사용자 정보 저장 (기본 관리자 계정 포함)
+        # 기본 관리자 계정도 파일에 저장하여 배포 후에도 유지
         with open(USERS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(users_to_save, f, ensure_ascii=False, indent=2)
+            json.dump(users, f, ensure_ascii=False, indent=2)
         return True
     except Exception as e:
         print(f"Error saving users: {e}")
