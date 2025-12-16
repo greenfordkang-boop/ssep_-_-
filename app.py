@@ -30,33 +30,46 @@ def get_status_color(status):
     status_str = str(status).lower()
     if '대기' in status_str or '접수대기' in status_str:
         return '#fbbf24'  # 노란색
-    elif '접수' in status_str:
+    elif '도면접수' in status_str:
         return '#3b82f6'  # 파란색
-    elif '자재준비' in status_str:
+    elif '자재요청' in status_str:
         return '#8b5cf6'  # 보라색
-    elif '생산중' in status_str:
+    elif '자재입고' in status_str:
         return '#10b981'  # 초록색
-    elif '생산완료' in status_str:
+    elif '샘플완료' in status_str:
         return '#06b6d4'  # 청록색
-    elif '납품중' in status_str:
-        return '#f59e0b'  # 주황색
-    elif '완료' in status_str or '납품완료' in status_str:
+    elif '출하완료' in status_str or '완료' in status_str:
         return '#22c55e'  # 밝은 초록색
     else:
         return '#94a3b8'  # 회색 (기본)
 
+def get_progress_status(row):
+    """날짜 필드를 기반으로 진행상태 계산"""
+    if pd.notna(row.get('출하일')) and str(row.get('출하일')) not in ['', 'nan', 'NaT']:
+        return '출하완료'
+    elif pd.notna(row.get('샘플완료일')) and str(row.get('샘플완료일')) not in ['', 'nan', 'NaT']:
+        return '샘플완료'
+    elif pd.notna(row.get('자재입고일')) and str(row.get('자재입고일')) not in ['', 'nan', 'NaT']:
+        return '자재입고'
+    elif pd.notna(row.get('자재요청')) and str(row.get('자재요청')) not in ['', 'nan', 'NaT']:
+        return '자재요청'
+    elif pd.notna(row.get('도면접수일')) and str(row.get('도면접수일')) not in ['', 'nan', 'NaT']:
+        return '도면접수'
+    else:
+        return '접수대기'
+
 def is_overdue(row):
     """납기가 지났는지 확인"""
-    if '납기요청일' not in row.index:
+    if '납기일' not in row.index:
         return False
     try:
-        due_date_str = str(row['납기요청일'])
+        due_date_str = str(row['납기일'])
         if not due_date_str or due_date_str == 'nan' or due_date_str == 'NaT':
             return False
         
         # 날짜 파싱
-        if isinstance(row['납기요청일'], pd.Timestamp):
-            due_date = row['납기요청일'].date()
+        if isinstance(row['납기일'], pd.Timestamp):
+            due_date = row['납기일'].date()
         else:
             due_date = pd.to_datetime(due_date_str).date()
         
@@ -64,9 +77,10 @@ def is_overdue(row):
         
         # 납기가 지났고 완료되지 않은 경우
         if due_date < today:
-            status = str(row.get('진행상태', '')).lower()
-            if '완료' not in status and '납품완료' not in status:
-                return True
+            # 출하일이 있으면 완료로 간주
+            if pd.notna(row.get('출하일')) and str(row.get('출하일')) not in ['', 'nan', 'NaT']:
+                return False
+            return True
     except:
         pass
     return False
@@ -75,6 +89,10 @@ def style_dataframe(df):
     """데이터프레임에 색상 스타일 적용하여 HTML로 반환"""
     if df.empty:
         return df
+    
+    # 진행상태 계산 (날짜 필드 기반)
+    if '진행상태' not in df.columns:
+        df['진행상태'] = df.apply(get_progress_status, axis=1)
     
     # 진행상태 컬럼에 색상 배경 적용
     def style_status(val):
@@ -241,72 +259,44 @@ def dashboard_page(user):
         with tab2:
             st.subheader("새로운 샘플 개발 요청")
             with st.form("new_request"):
-                # Row 1: Basic User Info (Auto-filled but editable or new fields)
-                col_u1, col_u2, col_u3 = st.columns(3)
+                # Row 1: 담당자 정보
+                col_u1, col_u2 = st.columns(2)
                 with col_u1:
-                    req_name = st.text_input("요청자", value=user["name"])
+                    req_name = st.text_input("담당자", value=user["name"])
                 with col_u2:
-                    dept = st.text_input("요청부서")
-                with col_u3:
-                    contact = st.text_input("연락처")
-                    
-                # Row 2: Contact Info
-                col_e1, col_e2 = st.columns([2, 1])
-                with col_e1:
-                    email = st.text_input("e-mail")
-                with col_e2:
-                    # Spacer or additional field
-                    pass
+                    dept = st.text_input("부서")
 
                 st.markdown("---")
                 
-                # Row 3: Product Info
+                # Row 2: 제품 정보
                 c_1, c_2 = st.columns(2)
                 with c_1:
-                    project = st.text_input("차종/프로젝트")
+                    project = st.text_input("차종")
                     part_name = st.text_input("품명")
-                    spec = st.text_input("규격")
+                    part_number = st.text_input("품번")
+                    delivery_place = st.text_input("납품장소")
                 with c_2:
-                    qty = st.number_input("수량", min_value=1, value=10)
-                    target_date = st.date_input("납기 요청일")
-                    remarks = st.text_area("비고/요청사항")
-                
-                # File uploader
-                uploaded_file = st.file_uploader("첨부파일 (도면 등)", type=['pdf', 'jpg', 'png', 'xlsx', 'pptx', 'zip'])
-                file_name = ""
-                if uploaded_file is not None:
-                     # For MVP, we might just store the filename string. 
-                     # To actually save the file, we need a directory.
-                     import os
-                     save_dir = "attachments"
-                     if not os.path.exists(save_dir):
-                         os.makedirs(save_dir)
-                     
-                     # Save with timestamp to avoid duplicates
-                     timestamp = time.strftime("%Y%m%d_%H%M%S")
-                     file_name = f"{timestamp}_{uploaded_file.name}"
-                     with open(os.path.join(save_dir, file_name), "wb") as f:
-                         f.write(uploaded_file.getbuffer())
+                    qty = st.number_input("요청수량", min_value=1, value=10)
+                    target_date = st.date_input("납기일")
+                    remarks = st.text_area("요청사항")
 
                 submitted = st.form_submit_button("요청 등록", type="primary")
                 
                 if submitted:
                     if not project or not part_name:
-                        st.error("프로젝트명과 품명은 필수 입력입니다.")
+                        st.error("차종과 품명은 필수 입력입니다.")
                     else:
                         new_data = {
-                            "요청자": req_name,
-                            "요청부서": dept,
+                            "담당자": req_name,
+                            "부서": dept,
                             "업체명": user["company"],
-                            "이메일": email,
-                            "연락처": contact,
-                            "차종/프로젝트": project,
+                            "차종": project,
                             "품명": part_name,
-                            "규격": spec,
-                            "수량": qty,
-                            "납기요청일": target_date.strftime("%Y-%m-%d"),
-                            "비고": remarks,
-                            "첨부": file_name
+                            "품번": part_number,
+                            "납품장소": delivery_place,
+                            "요청수량": qty,
+                            "납기일": target_date.strftime("%Y-%m-%d"),
+                            "요청사항": remarks
                         }
                         if data_manager.add_request(new_data):
                             st.success("요청이 성공적으로 등록되었습니다.")
@@ -349,7 +339,10 @@ def dashboard_page(user):
             with m1:
                 st.metric("총 요청 건수", f"{len(df)}건")
             with m2:
-                pending_count = len(df[df['진행상태'].astype(str).str.contains('대기|접수', na=False)])
+                # 진행상태 계산
+                if '진행상태' not in df.columns:
+                    df['진행상태'] = df.apply(get_progress_status, axis=1)
+                pending_count = len(df[df['진행상태'].astype(str).str.contains('대기|접수|자재', na=False)])
                 st.metric("진행/대기 중", f"{pending_count}건")
             with m3:
                 completed_count = len(df[df['진행상태'].astype(str).str.contains('완료', na=False)])
@@ -365,6 +358,8 @@ def dashboard_page(user):
             
             with c1:
                 st.caption("진행상태별 현황")
+                if '진행상태' not in df.columns:
+                    df['진행상태'] = df.apply(get_progress_status, axis=1)
                 status_counts = df['진행상태'].value_counts()
                 st.bar_chart(status_counts, color="#3b82f6")
                 
@@ -374,9 +369,10 @@ def dashboard_page(user):
                 st.bar_chart(company_counts, color="#ef4444")
                 
             with c3:
-                st.caption("차종/프로젝트별 분포")
-                project_counts = df['차종/프로젝트'].value_counts().head(5) # Top 5
-                st.bar_chart(project_counts, color="#10b981")
+                st.caption("차종별 분포")
+                if '차종' in df.columns:
+                    project_counts = df['차종'].value_counts().head(5) # Top 5
+                    st.bar_chart(project_counts, color="#10b981")
                 
             st.divider()
 
@@ -411,21 +407,41 @@ def dashboard_page(user):
                         help="삭제할 항목을 선택하세요",
                         default=False,
                     ),
-                    "진행상태": st.column_config.SelectboxColumn(
-                        "진행상태",
-                        help="현재 진행 상태를 선택하세요",
-                        width="medium",
-                        options=[
-                            "접수대기",
-                            "접수",
-                            "자재준비",
-                            "생산중",
-                            "생산완료",
-                            "납품중",
-                            "납품완료"
-                        ],
-                        required=True,
-                    )
+                    "접수일": st.column_config.DateColumn(
+                        "접수일",
+                        help="접수일을 선택하세요",
+                        format="YYYY-MM-DD",
+                    ),
+                    "납기일": st.column_config.DateColumn(
+                        "납기일",
+                        help="납기일을 선택하세요",
+                        format="YYYY-MM-DD",
+                    ),
+                    "도면접수일": st.column_config.DateColumn(
+                        "도면접수일",
+                        help="도면접수일을 선택하세요",
+                        format="YYYY-MM-DD",
+                    ),
+                    "완료예정일": st.column_config.DateColumn(
+                        "완료예정일",
+                        help="완료예정일을 선택하세요",
+                        format="YYYY-MM-DD",
+                    ),
+                    "자재입고일": st.column_config.DateColumn(
+                        "자재입고일",
+                        help="자재입고일을 선택하세요",
+                        format="YYYY-MM-DD",
+                    ),
+                    "샘플완료일": st.column_config.DateColumn(
+                        "샘플완료일",
+                        help="샘플완료일을 선택하세요",
+                        format="YYYY-MM-DD",
+                    ),
+                    "출하일": st.column_config.DateColumn(
+                        "출하일",
+                        help="출하일을 선택하세요",
+                        format="YYYY-MM-DD",
+                    ),
                 }
             )
             

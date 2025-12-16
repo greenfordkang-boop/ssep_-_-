@@ -8,28 +8,32 @@ def init_db():
     """Initialize the Excel database if it doesn't exist."""
     if not os.path.exists(DATA_FILE):
         df = pd.DataFrame(columns=[
-            "관리번호", "요청일", "요청자", "요청부서", "업체명", "이메일", "연락처", 
-            "차종/프로젝트", "품명", "규격", "수량", "납기요청일", 
-            "진행상태", "비고", "첨부"
+            "관리번호", "접수일", "담당자", "부서", "업체명", "차종", "품명", "품번", 
+            "납품장소", "요청수량", "납기일", "요청사항", "도면접수일", "자재요청", 
+            "완료예정일", "자재입고일", "샘플완료일", "출하일", "비고"
         ])
         # Add some sample data for visualization
         sample_data = [
             {
                 "관리번호": "REQ-20241215-001",
-                "요청일": "2024-12-15",
-                "요청자": "Client User 1",
-                "요청부서": "개발팀",
+                "접수일": "2024-12-15",
+                "담당자": "Client User 1",
+                "부서": "개발팀",
                 "업체명": "Client A",
-                "이메일": "user@client.com",
-                "연락처": "010-1234-5678",
-                "차종/프로젝트": "EV-X1",
+                "차종": "EV-X1",
                 "품명": "Battery Connector",
-                "규격": "50A Gold Plated",
-                "수량": 100,
-                "납기요청일": "2024-12-25",
-                "진행상태": "접수 (Received)",
-                "비고": "Urgent",
-                "첨부": ""
+                "품번": "50A Gold Plated",
+                "납품장소": "",
+                "요청수량": 100,
+                "납기일": "2024-12-25",
+                "요청사항": "Urgent",
+                "도면접수일": "",
+                "자재요청": "",
+                "완료예정일": "",
+                "자재입고일": "",
+                "샘플완료일": "",
+                "출하일": "",
+                "비고": ""
             }
         ]
         df = pd.concat([df, pd.DataFrame(sample_data)], ignore_index=True)
@@ -46,16 +50,45 @@ def load_data():
         
         # Auto-migration: Check for missing columns and add them
         expected_cols = [
-            "관리번호", "요청일", "요청자", "요청부서", "업체명", "이메일", "연락처", 
-            "차종/프로젝트", "품명", "규격", "수량", "납기요청일", 
-            "진행상태", "비고", "첨부"
+            "관리번호", "접수일", "담당자", "부서", "업체명", "차종", "품명", "품번", 
+            "납품장소", "요청수량", "납기일", "요청사항", "도면접수일", "자재요청", 
+            "완료예정일", "자재입고일", "샘플완료일", "출하일", "비고"
         ]
+        
+        # 기존 컬럼명을 새 컬럼명으로 매핑
+        column_mapping = {
+            "요청일": "접수일",
+            "요청자": "담당자",
+            "요청부서": "부서",
+            "차종/프로젝트": "차종",
+            "규격": "품번",
+            "수량": "요청수량",
+            "납기요청일": "납기일"
+        }
+        
+        # 비고 컬럼 처리: 기존 비고는 요청사항으로 이동 (비고는 새로 추가)
+        if "비고" in df.columns and "요청사항" not in df.columns:
+            df["요청사항"] = df["비고"]
+            df.drop(columns=["비고"], inplace=True)
+        
+        # 컬럼명 변경
+        df.rename(columns=column_mapping, inplace=True)
+        
+        # 불필요한 컬럼 제거 (이메일, 연락처, 진행상태, 첨부)
+        columns_to_remove = ["이메일", "연락처", "진행상태", "첨부"]
+        for col in columns_to_remove:
+            if col in df.columns:
+                df.drop(columns=[col], inplace=True)
         
         updated = False
         for col in expected_cols:
             if col not in df.columns:
                 df[col] = "" # Add missing column with empty string
                 updated = True
+        
+        # 컬럼 순서 재정렬 (존재하는 컬럼만)
+        existing_cols = [col for col in expected_cols if col in df.columns]
+        df = df[existing_cols]
         
         if updated:
             save_data(df)
@@ -87,8 +120,7 @@ def add_request(data_dict):
     new_id = f"REQ-{date_str}-{count:03d}"
     
     data_dict["관리번호"] = new_id
-    data_dict["요청일"] = datetime.now().strftime("%Y-%m-%d")
-    data_dict["진행상태"] = "접수대기"
+    data_dict["접수일"] = datetime.now().strftime("%Y-%m-%d")
     
     new_row = pd.DataFrame([data_dict])
     df = pd.concat([df, new_row], ignore_index=True)

@@ -13,6 +13,12 @@ DEFAULT_USERS = {
         "role": "admin",
         "company": "Sinsung",
         "name": "관리자 (Admin)"
+    },
+    "manager": {
+        "password": "manager123",
+        "role": "admin",
+        "company": "Sinsung",
+        "name": "매니저 (Manager)"
     }
 }
 
@@ -36,7 +42,7 @@ def save_users(users):
     """Save users to JSON file."""
     try:
         # 기본 관리자 계정은 파일에 저장하지 않음 (항상 메모리에 유지)
-        users_to_save = {k: v for k, v in users.items() if k != "admin"}
+        users_to_save = {k: v for k, v in users.items() if k not in DEFAULT_USERS.keys()}
         with open(USERS_FILE, 'w', encoding='utf-8') as f:
             json.dump(users_to_save, f, ensure_ascii=False, indent=2)
         return True
