@@ -403,10 +403,7 @@ def dashboard_page(user):
             if "선택" not in display_df.columns:
                 display_df.insert(0, "선택", False)
             
-            # 날짜 컬럼 목록
-            date_columns = ["접수일", "납기일", "도면접수일", "완료예정일", "자재입고일", "샘플완료일", "출하일"]
-            
-            # column_config 동적 생성 (존재하는 컬럼만)
+            # column_config 최소화 - 선택 컬럼만 설정 (타입 호환성 문제 방지)
             column_config = {
                 "선택": st.column_config.CheckboxColumn(
                     "삭제 선택",
@@ -415,54 +412,8 @@ def dashboard_page(user):
                 )
             }
             
-            # 날짜 컬럼 처리 (더 안전하게)
-            for col in date_columns:
-                if col in display_df.columns:
-                    try:
-                        # 현재 컬럼의 데이터 타입 확인
-                        col_data = display_df[col]
-                        
-                        # 빈 값 처리
-                        if col_data.empty:
-                            continue
-                        
-                        # datetime 타입으로 변환 시도
-                        try:
-                            # 빈 문자열, None 등을 처리
-                            col_cleaned = col_data.replace(['', 'nan', 'None', None, 'NaT'], pd.NaT)
-                            # 날짜로 변환
-                            col_converted = pd.to_datetime(col_cleaned, errors='coerce')
-                            
-                            # 변환이 성공했는지 확인 (최소 하나라도 유효한 날짜가 있는지)
-                            if col_converted.notna().any():
-                                display_df[col] = col_converted
-                                # DateColumn 설정
-                                column_config[col] = st.column_config.DateColumn(
-                                    col,
-                                    help=f"{col}을 선택하세요",
-                                    format="YYYY-MM-DD",
-                                )
-                        except:
-                            # 변환 실패 시 텍스트로 유지
-                            pass
-                    except Exception:
-                        # 전체 실패 시 건너뛰기
-                        pass
-            
-            # 비고와 자재요청 필드 설정 (관리자 전용)
-            if "비고" in display_df.columns:
-                column_config["비고"] = st.column_config.TextColumn(
-                    "비고",
-                    help="관리자 전용 비고란입니다",
-                    width="medium",
-                )
-            
-            if "자재요청" in display_df.columns:
-                column_config["자재요청"] = st.column_config.TextColumn(
-                    "자재요청",
-                    help="관리자 전용 자재요청란입니다",
-                    width="medium",
-                )
+            # 날짜 컬럼은 기본 편집 모드로 사용 (DateColumn 설정 제거로 타입 호환성 문제 방지)
+            # 비고와 자재요청 필드도 기본 편집 모드로 사용
             
             edited_df = st.data_editor(
                 display_df,
