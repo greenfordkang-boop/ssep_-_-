@@ -299,6 +299,34 @@ def dashboard_page(user):
                     qty = st.number_input("요청수량", min_value=1, value=10)
                     target_date = st.date_input("납기일")
                     remarks = st.text_area("요청사항")
+                
+                st.markdown("---")
+                
+                # 파일 업로드
+                uploaded_file = st.file_uploader(
+                    "첨부파일 (도면, 사양서 등)", 
+                    type=['pdf', 'jpg', 'jpeg', 'png', 'xlsx', 'xls', 'pptx', 'ppt', 'doc', 'docx', 'zip', 'dwg'],
+                    help="도면, 사양서, 이미지 등을 업로드할 수 있습니다."
+                )
+                
+                file_name = ""
+                if uploaded_file is not None:
+                    # 파일 저장 디렉토리 생성
+                    import os
+                    save_dir = "attachments"
+                    if not os.path.exists(save_dir):
+                        os.makedirs(save_dir)
+                    
+                    # 타임스탬프와 원본 파일명을 조합하여 저장
+                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    file_name = f"{timestamp}_{uploaded_file.name}"
+                    file_path = os.path.join(save_dir, file_name)
+                    
+                    # 파일 저장
+                    with open(file_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+                    
+                    st.success(f"파일 업로드 완료: {uploaded_file.name}")
 
                 submitted = st.form_submit_button("요청 등록", type="primary")
                 
@@ -316,7 +344,8 @@ def dashboard_page(user):
                             "납품장소": delivery_place,
                             "요청수량": qty,
                             "납기일": target_date.strftime("%Y-%m-%d"),
-                            "요청사항": remarks
+                            "요청사항": remarks,
+                            "첨부파일": file_name
                         }
                         if data_manager.add_request(new_data):
                             st.success("요청이 성공적으로 등록되었습니다.")
